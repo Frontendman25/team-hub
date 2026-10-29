@@ -1,0 +1,73 @@
+# ── Environment ──────────────────────────────────────────────────────────────
+.env
+.env.*
+.env.local
+.env.*.local
+.env.staging
+.env.production
+!.env.example
+!.env.staging.example
+!.env.production.example
+!**/.env.example
+!**/.env.test.example
+
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+.pnp
+.pnp.*
+
+# ── Logs ─────────────────────────────────────────────────────────────────────
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# ── TypeScript / builds ──────────────────────────────────────────────────────
+*.tsbuildinfo
+dist/
+build/
+.next/
+out/
+.turbo
+.vercel
+
+# ── Test / coverage ──────────────────────────────────────────────────────────
+coverage/
+playwright-report/
+test-results/
+
+# ── Local data ───────────────────────────────────────────────────────────────
+.local-storage/
+apps/api/.local-storage/
+*.dump
+*.sql.gz
+*.sqlite
+*.sqlite3
+
+# ── OS ───────────────────────────────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+Desktop.ini
+
+# ── Editors / tooling ────────────────────────────────────────────────────────
+.idea/
+.vscode/
+*.swp
+*.swo
+.cursor/
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+docker-compose.override.yml
+
+# ── Internal tutor / AI materials (kept locally, not published) ──────────────
+docs/knowledge-pack/
+docs/TEAMHUB_*.md
+apps/web/AGENTS.md
+apps/web/CLAUDE.md
+apps/web/README.md
+
+# Nested lockfiles (npm workspaces use the root package-lock.json)
+apps/api/package-lock.json
+apps/web/package-lock.json

@@ -1,0 +1,20 @@
+{
+	auto_https off
+}
+
+:80 {
+	encode gzip
+
+	handle /socket.io* {
+		reverse_proxy api:3200
+	}
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:3200
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

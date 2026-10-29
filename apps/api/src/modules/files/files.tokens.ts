@@ -1,0 +1,2 @@
+export const FILES_REPOSITORY = Symbol('FILES_REPOSITORY')
+export const OBJECT_STORAGE = Symbol('OBJECT_STORAGE')

@@ -1,0 +1,20 @@
+# Copy this file over deploy/caddy/Caddyfile on a real HTTPS host.
+# Replace staging.example.com with the public hostname.
+# Caddy obtains certificates automatically when ports 80 and 443 are public.
+
+staging.example.com {
+	encode gzip
+
+	handle /socket.io* {
+		reverse_proxy api:3200
+	}
+
+	handle /api/* {
+		uri strip_prefix /api
+		reverse_proxy api:3200
+	}
+
+	handle {
+		reverse_proxy web:3000
+	}
+}

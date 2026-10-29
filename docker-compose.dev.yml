@@ -1,0 +1,21 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Development overrides
+# Usage: docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d
+#
+# Exposes DB ports on the host for Nest, Drizzle Kit, and local tooling.
+# Ports differ from FS Project (5434 / 6379) so both can run side by side.
+# ─────────────────────────────────────────────────────────────────────────────
+
+services:
+  postgres:
+    ports:
+      - '${POSTGRES_PORT:-5435}:5432'
+
+  redis:
+    ports:
+      - '${REDIS_PORT:-6380}:6379'
+
+  minio:
+    ports:
+      - '${S3_PORT:-9000}:9000'
+      - '${S3_CONSOLE_PORT:-9001}:9001'

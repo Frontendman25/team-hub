@@ -1,0 +1,44 @@
+{
+  "name": "teamhub",
+  "version": "0.1.0",
+  "private": true,
+  "packageManager": "npm@10.7.0",
+  "workspaces": [
+    "apps/api",
+    "apps/web"
+  ],
+  "description": "TeamHub — internal social network for companies and distributed teams",
+  "license": "MIT",
+  "scripts": {
+    "dev:api": "npm --prefix apps/api run start:dev",
+    "dev:web": "npm --prefix apps/web run dev",
+    "build:api": "npm --prefix apps/api run build",
+    "build:web": "npm --prefix apps/web run build",
+    "lint": "npm --prefix apps/api run lint",
+    "lint:web": "npm --prefix apps/web run lint",
+    "lint:fix": "npm --prefix apps/api run lint:fix",
+    "type-check": "npm --prefix apps/api run type-check",
+    "db:up": "docker compose -f docker-compose.yml -f docker-compose.dev.yml up -d postgres redis minio",
+    "db:down": "docker compose -f docker-compose.yml -f docker-compose.dev.yml down",
+    "db:logs": "docker compose -f docker-compose.yml -f docker-compose.dev.yml logs -f postgres redis minio",
+    "db:migrate": "npm --prefix apps/api run db:migrate",
+    "db:migrate:runtime": "npm --prefix apps/api run db:migrate:runtime",
+    "db:generate": "npm --prefix apps/api run db:generate",
+    "db:seed": "npm --prefix apps/api run db:seed",
+    "db:studio": "npm --prefix apps/api run db:studio",
+    "test": "npm --prefix apps/api run test",
+    "test:web": "npm --prefix apps/web run test",
+    "docker:build:api": "docker build -f apps/api/Dockerfile --target production -t teamhub-api:local .",
+    "docker:build:migrate": "docker build -f apps/api/Dockerfile --target migrate -t teamhub-migrate:local .",
+    "docker:build:web": "docker build -f apps/web/Dockerfile --target production -t teamhub-web:local .",
+    "compose:staging:config": "docker compose --env-file .env.staging.example -f docker-compose.yml -f docker-compose.staging.yml config"
+  },
+  "devDependencies": {
+    "@typescript-eslint/eslint-plugin": "^8.41.0",
+    "@typescript-eslint/parser": "^8.41.0",
+    "eslint": "^9.34.0",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-prettier": "^5.5.4",
+    "prettier": "^3.6.2"
+  }
+}

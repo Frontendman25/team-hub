@@ -1,0 +1,1 @@
+export const SEARCH_REPOSITORY = Symbol('SEARCH_REPOSITORY')
