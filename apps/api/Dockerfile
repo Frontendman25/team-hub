@@ -69,3 +69,9 @@ FROM production AS migrate
 WORKDIR /repo/apps/api
 USER appuser
 CMD ["node", "dist/migrate.js"]
+
+# Manual only. Never used as a migrate/api command.
+FROM production AS seed-demo
+WORKDIR /repo/apps/api
+USER appuser
+CMD ["node", "dist/seed-staging-demo.js"]

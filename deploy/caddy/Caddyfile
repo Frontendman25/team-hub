@@ -3,18 +3,22 @@
 }
 
 :80 {
-	encode gzip
-
+	# Gzip must not wrap Engine.IO. A compressed WebSocket upgrade can
+	# complete (101) then die, and the client reconnects forever.
 	handle /socket.io* {
-		reverse_proxy api:3200
+		reverse_proxy api:3200 {
+			flush_interval -1
+		}
 	}
 
 	handle /api/* {
+		encode gzip
 		uri strip_prefix /api
 		reverse_proxy api:3200
 	}
 
 	handle {
+		encode gzip
 		reverse_proxy web:3000
 	}
 }

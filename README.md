@@ -73,7 +73,7 @@ flowchart TB
 ```text
 apps/web    Next.js App Router (FSD-lite: entities, features, widgets, shared)
 apps/api    NestJS modules, Drizzle schema and migrations, Vitest
-deploy/     Caddyfile for a same-origin staging compose stack
+deploy/     Caddyfile, TLS example, Approach A staging runbook
 .github/    CI workflow
 ```
 
@@ -108,6 +108,18 @@ npm run db:seed
 ### Local demo accounts (development only)
 
 `npm run db:seed` creates `demo_persona` users such as `sarah.chen@teamhub.local`. The shared local password is `DEMO_PASSWORD` in `apps/api/src/infrastructure/database/demo-users.ts`. **Local/e2e only.** Persona login is off when `NODE_ENV=production`. Never seed a production database. The login form does not prefill credentials.
+
+### Staging demo catalog (optional, not a migration)
+
+A clean migrate does **not** create the public demo workspace. After staging compose is up:
+
+```bash
+docker compose --env-file .env.staging -p teamhub-staging \
+  -f docker-compose.yml -f docker-compose.staging.yml \
+  run --rm --no-deps --entrypoint node api dist/seed-staging-demo.js
+```
+
+Or against any migrated database: `npm run db:seed:staging-demo` with `POSTGRESQL_URL` set. Idempotent. Creates `DEMO_WORKSPACE_ID` (`kind=demo`), fictional catalog copy, and a non-loginable catalog owner. Does **not** write `DEMO_PASSWORD` or enable persona login.
 
 ## Development
 
@@ -163,7 +175,7 @@ Screenshots are not in this repository yet. Planned files:
 - Independent full-stack product project under active development. Not currently production-deployed.
 - No JWT, OAuth, or live WebRTC calls.
 - Guest demo is a **shared** sandbox (TTL + cleanup), not a per-visitor clone.
-- Staging Docker/Caddy config exists; cloud provisioning is out of scope.
+- Staging Docker/Caddy config exists; cloud provisioning is out of scope. VM runbook: [`deploy/STAGING.md`](deploy/STAGING.md).
 - Auth throttle is in-memory per process.
 
 License: MIT (see `package.json`).

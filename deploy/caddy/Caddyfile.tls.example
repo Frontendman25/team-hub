@@ -3,18 +3,20 @@
 # Caddy obtains certificates automatically when ports 80 and 443 are public.
 
 staging.example.com {
-	encode gzip
-
 	handle /socket.io* {
-		reverse_proxy api:3200
+		reverse_proxy api:3200 {
+			flush_interval -1
+		}
 	}
 
 	handle /api/* {
+		encode gzip
 		uri strip_prefix /api
 		reverse_proxy api:3200
 	}
 
 	handle {
+		encode gzip
 		reverse_proxy web:3000
 	}
 }

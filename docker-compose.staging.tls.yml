@@ -1,0 +1,26 @@
+# Public HTTPS ports for Approach A. Does not change routing.
+#
+#   1. Copy deploy/caddy/Caddyfile.tls.example → deploy/caddy/Caddyfile
+#      and set the real hostname.
+#   2. Set FRONTEND_URL / NEXT_PUBLIC_SITE_URL / COOKIE_SECURE=true
+#      in .env.staging (never commit that file).
+#   3. docker compose --env-file .env.staging -p teamhub-staging \
+#        -f docker-compose.yml -f docker-compose.staging.yml \
+#        -f docker-compose.staging.tls.yml up --build -d
+#
+# Local HTTP smoke keeps using 8080 without this file.
+
+services:
+  caddy:
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    volumes:
+      - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

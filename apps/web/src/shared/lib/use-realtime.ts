@@ -9,6 +9,10 @@ import { markFailed, upsertMessage } from '@/entities/message/model/merge-messag
 import { api } from '@/shared/api/client'
 import { emitWithAck, isRealtimeError } from '@/shared/lib/realtime-ack'
 import { getSocketUrl } from '@/shared/lib/env'
+import {
+  realtimeClientOptions,
+  realtimeNamespaceUrl
+} from '@/shared/lib/realtime-socket'
 import type { ChatMessage, MessagePage } from '@/shared/types/api'
 
 type TypingState = { userId: string; at: number }
@@ -44,10 +48,7 @@ export function useRealtime(workspaceId: string | undefined) {
       return
     }
 
-    const socket = io(`${getSocketUrl()}/realtime`, {
-      withCredentials: true,
-      transports: ['websocket', 'polling']
-    })
+    const socket = io(realtimeNamespaceUrl(getSocketUrl()), realtimeClientOptions)
     socketRef.current = socket
 
     const patchThread = (message: ChatMessage) => {

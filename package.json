@@ -25,6 +25,7 @@
     "db:migrate:runtime": "npm --prefix apps/api run db:migrate:runtime",
     "db:generate": "npm --prefix apps/api run db:generate",
     "db:seed": "npm --prefix apps/api run db:seed",
+    "db:seed:staging-demo": "npm --prefix apps/api run db:seed:staging-demo",
     "db:studio": "npm --prefix apps/api run db:studio",
     "test": "npm --prefix apps/api run test",
     "test:web": "npm --prefix apps/web run test",

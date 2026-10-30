@@ -7,6 +7,10 @@
 # Postgres, Redis stay on the compose network (not published).
 # MinIO API is published on 9002 so browser presigned PUTs work locally.
 # Browse http://localhost:8080 after migrate exits 0.
+# Optional catalog (idempotent, no persona passwords):
+#   docker compose --env-file .env.staging -p teamhub-staging \
+#     -f docker-compose.yml -f docker-compose.staging.yml \
+#     run --rm --no-deps --entrypoint node api dist/seed-staging-demo.js
 
 name: teamhub-staging
 
@@ -42,7 +46,7 @@ services:
       - '${STAGING_S3_PORT:-9002}:9000'
 
   minio-init:
-    image: quay.io/minio/mc:latest
+    image: cgr.dev/chainguard/minio-client@sha256:5b759d9e248ad9f1ab8455f8168b86a47acb1e08207d38603b504bdc5a555d7a
     depends_on:
       minio:
         condition: service_healthy
@@ -51,7 +55,7 @@ services:
       S3_SECRET_ACCESS_KEY: ${S3_SECRET_ACCESS_KEY:?S3_SECRET_ACCESS_KEY is required}
       S3_BUCKET: ${S3_BUCKET:-teamhub-staging}
     entrypoint:
-      - /bin/sh
+      - /usr/bin/bash
       - -c
       - |
         mc alias set local http://minio:9000 "$$S3_ACCESS_KEY_ID" "$$S3_SECRET_ACCESS_KEY"
@@ -164,6 +168,8 @@ services:
       - '${STAGING_HTTP_PORT:-8080}:80'
     volumes:
       - ./deploy/caddy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
     depends_on:
       api:
         condition: service_healthy
@@ -171,3 +177,7 @@ services:
         condition: service_started
     networks:
       - teamhub-network
+
+volumes:
+  caddy_data:
+  caddy_config:

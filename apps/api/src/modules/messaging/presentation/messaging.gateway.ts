@@ -38,8 +38,7 @@ type AuthedSocket = Socket & {
 }
 
 @WebSocketGateway({
-  namespace: '/realtime',
-  cors: { credentials: true }
+  namespace: '/realtime'
 })
 export class MessagingGateway
   implements OnGatewayConnection, OnGatewayDisconnect

@@ -235,6 +235,69 @@ describe('Messaging HTTP and sockets', () => {
     jamesSocket.close()
   })
 
+  it('authenticates Engine.IO polling and still delivers live messages', async () => {
+    const listed = await request(app.getHttpServer())
+      .get('/workspaces/88888888-8888-4888-8888-888888888888/conversations')
+      .set('Cookie', sarah)
+      .expect(200)
+    const general = listed.body.data.find(
+      (row: { slug: string }) => row.slug === 'general'
+    ) as { id: string }
+
+    const sarahSocket = io(`${origin}/realtime`, {
+      extraHeaders: { cookie: sarah.join('; ') },
+      transports: ['polling', 'websocket'],
+      rememberUpgrade: false,
+      path: '/socket.io'
+    })
+    const jamesSocket = io(`${origin}/realtime`, {
+      extraHeaders: { cookie: james.join('; ') },
+      transports: ['polling', 'websocket'],
+      rememberUpgrade: false,
+      path: '/socket.io'
+    })
+    await Promise.all([
+      waitForEvent(sarahSocket, 'session.ready'),
+      waitForEvent(jamesSocket, 'session.ready')
+    ])
+    await new Promise((resolve) =>
+      sarahSocket.emit(
+        'join.workspace',
+        { workspaceId: '88888888-8888-4888-8888-888888888888' },
+        resolve
+      )
+    )
+    await new Promise((resolve) =>
+      jamesSocket.emit(
+        'join.workspace',
+        { workspaceId: '88888888-8888-4888-8888-888888888888' },
+        resolve
+      )
+    )
+    await new Promise((resolve) =>
+      jamesSocket.emit(
+        'join.conversation',
+        { conversationId: general.id },
+        resolve
+      )
+    )
+
+    const received = waitForEvent<{ content: string }>(
+      jamesSocket,
+      'message.created'
+    )
+    sarahSocket.emit('message.send', {
+      conversationId: general.id,
+      content: 'Polling path live',
+      clientId: crypto.randomUUID()
+    })
+    await expect(received).resolves.toMatchObject({
+      content: 'Polling path live'
+    })
+    sarahSocket.close()
+    jamesSocket.close()
+  })
+
   it('fans HTTP edits and deletes out over the socket', async () => {
     const listed = await request(app.getHttpServer())
       .get('/workspaces/88888888-8888-4888-8888-888888888888/conversations')

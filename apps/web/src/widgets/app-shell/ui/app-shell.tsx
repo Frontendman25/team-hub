@@ -195,14 +195,13 @@ export function AppShell({ children }: { children: ReactNode }) {
       </div>
 
       <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-white md:hidden">
-        <div className="grid grid-cols-6">
+        <div className="grid grid-cols-5">
           {[
             { href: homeHref, label: 'Home', icon: Home },
             { href: messagesHref, label: 'Chat', icon: MessageSquare },
             { href: boardHref, label: 'Board', icon: Kanban },
             { href: filesHref, label: 'Files', icon: Folder },
-            { href: '/profile', label: 'Profile', icon: UserRound },
-            { href: '/invitations', label: 'Invites', icon: Mail }
+            { href: '/profile', label: 'Profile', icon: UserRound }
           ].map((item) => (
             <Link
               key={item.label}
