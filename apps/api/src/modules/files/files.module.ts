@@ -15,6 +15,7 @@ import { StreamFileUseCase } from './application/stream-file.use-case'
 import type { FilesRepository } from './domain/files.repository'
 import type { ObjectStorage } from './domain/object-storage'
 import { DrizzleFilesRepository } from './infrastructure/drizzle-files.repository'
+import { CloudinaryObjectStorage } from './infrastructure/cloudinary-object-storage'
 import { MemoryObjectStorage } from './infrastructure/memory-object-storage'
 import { S3ObjectStorage } from './infrastructure/s3-object-storage'
 import { UploadRateLimiter } from './infrastructure/upload-rate-limiter'
@@ -37,6 +38,9 @@ import { FilesController } from './presentation/files.controller'
         const driver = config.get('STORAGE_DRIVER', { infer: true })
         if (driver === 's3') {
           return new S3ObjectStorage(config)
+        }
+        if (driver === 'cloudinary') {
+          return new CloudinaryObjectStorage(config)
         }
         return new MemoryObjectStorage()
       },

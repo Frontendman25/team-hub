@@ -73,7 +73,7 @@ flowchart TB
 ```text
 apps/web    Next.js App Router (FSD-lite: entities, features, widgets, shared)
 apps/api    NestJS modules, Drizzle schema and migrations, Vitest
-deploy/     Caddyfile, TLS example, Approach A staging runbook
+deploy/     Caddyfile, TLS example, Approach A VM runbook, Render combined demo
 .github/    CI workflow
 ```
 
@@ -175,7 +175,7 @@ Screenshots are not in this repository yet. Planned files:
 - Independent full-stack product project under active development. Not currently production-deployed.
 - No JWT, OAuth, or live WebRTC calls.
 - Guest demo is a **shared** sandbox (TTL + cleanup), not a per-visitor clone.
-- Staging Docker/Caddy config exists; cloud provisioning is out of scope. VM runbook: [`deploy/STAGING.md`](deploy/STAGING.md).
+- Staging Docker/Caddy config exists; cloud provisioning is out of scope. VM runbook: [`deploy/STAGING.md`](deploy/STAGING.md). Combined Render Free demo: [`deploy/RENDER.md`](deploy/RENDER.md).
 - Auth throttle is in-memory per process.
 
 License: MIT (see `package.json`).

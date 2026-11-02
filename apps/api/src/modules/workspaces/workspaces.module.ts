@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Queue } from 'bullmq'
-import Redis from 'ioredis'
 import type { Env } from '../../infrastructure/config/env'
+import { createTeamhubIoredis } from '../../infrastructure/redis/create-ioredis'
+import { RedisLifecycle } from '../../infrastructure/redis/redis-lifecycle'
 import { DrizzleService } from '../../infrastructure/database/drizzle.service'
 import { NotificationsModule } from '../notifications/notifications.module'
 import { AcceptInvitationUseCase } from './application/accept-invitation.use-case'
@@ -46,13 +47,17 @@ import { INVITATION_QUEUE, WORKSPACES_REPOSITORY } from './workspaces.tokens'
     },
     {
       provide: INVITATION_QUEUE,
-      useFactory: (config: ConfigService<Env, true>) => {
-        const connection = new Redis(config.get('REDIS_URL', { infer: true }), {
-          maxRetriesPerRequest: null
-        })
+      useFactory: (
+        config: ConfigService<Env, true>,
+        lifecycle: RedisLifecycle
+      ) => {
+        const connection = createTeamhubIoredis(
+          config.get('REDIS_URL', { infer: true }),
+          lifecycle
+        )
         return new Queue(INVITATION_QUEUE_NAME, { connection })
       },
-      inject: [ConfigService]
+      inject: [ConfigService, RedisLifecycle]
     },
     InvitationQueue,
     InvitationWorker,

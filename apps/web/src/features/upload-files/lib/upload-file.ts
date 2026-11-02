@@ -24,9 +24,12 @@ export async function uploadWorkspaceFile(
     byteSize: file.size
   })
 
-  const target = initiated.uploadUrl.startsWith('memory://')
-    ? `/api/files/${initiated.file.id}/content`
-    : initiated.uploadUrl
+  const target =
+    initiated.strategy === 'proxy' ||
+    initiated.uploadUrl.startsWith('memory://') ||
+    initiated.uploadUrl.startsWith('cloudinary://')
+      ? `/api/files/${initiated.file.id}/content`
+      : initiated.uploadUrl
   await putObject(target, file, initiated.uploadHeaders, options)
 
   return api.files.complete(initiated.file.id)

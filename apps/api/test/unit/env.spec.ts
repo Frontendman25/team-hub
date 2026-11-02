@@ -40,6 +40,19 @@ describe('validateEnv', () => {
     expect(env.COOKIE_SECURE).toBe(false)
   })
 
+  it('allows Cloudinary as the production storage driver', () => {
+    const env = validateEnv({
+      ...base,
+      NODE_ENV: 'production',
+      STORAGE_DRIVER: 'cloudinary',
+      CLOUDINARY_CLOUD_NAME: 'demo',
+      CLOUDINARY_API_KEY: 'key',
+      CLOUDINARY_API_SECRET: 'secret'
+    })
+    expect(env.STORAGE_DRIVER).toBe('cloudinary')
+    expect(env.COOKIE_SECURE).toBe(true)
+  })
+
   it('does not require the Socket.IO Redis adapter in development by default', () => {
     const env = validateEnv({
       ...base,

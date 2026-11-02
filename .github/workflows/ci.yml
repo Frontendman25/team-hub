@@ -96,3 +96,5 @@ jobs:
         run: docker build -f apps/api/Dockerfile --target migrate -t teamhub-migrate:ci .
       - name: Build web image
         run: docker build -f apps/web/Dockerfile --target production -t teamhub-web:ci .
+      - name: Build combined demo image
+        run: docker build -f deploy/combined/Dockerfile -t teamhub-combined:ci .

@@ -10,6 +10,8 @@ Do **not** put the UI on Vercel or split `app.` / `api.` hostnames. That breaks 
 
 This is **staging**, not production. No AWS/Vercel click-deploy.
 
+A **combined Render Free demo** (one web service, Neon, Render Key Value, Cloudinary) is documented in [`deploy/RENDER.md`](RENDER.md). It does not replace this VM/Caddy/MinIO layout.
+
 ## Prerequisites
 
 - A Linux VM you already control (Docker Engine + Compose v2).

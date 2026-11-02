@@ -32,6 +32,7 @@
     "docker:build:api": "docker build -f apps/api/Dockerfile --target production -t teamhub-api:local .",
     "docker:build:migrate": "docker build -f apps/api/Dockerfile --target migrate -t teamhub-migrate:local .",
     "docker:build:web": "docker build -f apps/web/Dockerfile --target production -t teamhub-web:local .",
+    "docker:build:combined": "docker build -f deploy/combined/Dockerfile -t teamhub-combined:local .",
     "compose:staging:config": "docker compose --env-file .env.staging.example -f docker-compose.yml -f docker-compose.staging.yml config"
   },
   "devDependencies": {

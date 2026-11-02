@@ -6,8 +6,9 @@ import {
 } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Worker } from 'bullmq'
-import Redis from 'ioredis'
+import type Redis from 'ioredis'
 import type { Env } from '../../../infrastructure/config/env'
+import { createTeamhubIoredis } from '../../../infrastructure/redis/create-ioredis'
 import { CleanupDemoGuestsUseCase } from '../application/cleanup-demo-guests.use-case'
 import { DEMO_CLEANUP_QUEUE_NAME } from './demo-cleanup.queue'
 
@@ -27,9 +28,9 @@ export class DemoCleanupWorker implements OnModuleInit, OnModuleDestroy {
       this.logger.log('Demo cleanup worker skipped (RUN_BACKGROUND_JOBS=false)')
       return
     }
-    this.connection = new Redis(this.config.get('REDIS_URL', { infer: true }), {
-      maxRetriesPerRequest: null
-    })
+    this.connection = createTeamhubIoredis(
+      this.config.get('REDIS_URL', { infer: true })
+    )
     this.worker = new Worker(
       DEMO_CLEANUP_QUEUE_NAME,
       async () => {

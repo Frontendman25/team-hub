@@ -101,6 +101,7 @@ export interface WorkspaceRepository {
   listInvitations(workspaceId: string): Promise<InvitationRecord[]>
   findInvitationById(id: string): Promise<InvitationRecord | null>
   listPendingForEmail(email: string): Promise<InvitationRecord[]>
+  listPendingInvitationsMissingNotification(): Promise<string[]>
   setInvitationStatus(id: string, status: InvitationStatus): Promise<boolean>
   acceptInvitation(input: {
     invitationId: string

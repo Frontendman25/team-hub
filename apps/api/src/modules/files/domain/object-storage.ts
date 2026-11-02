@@ -21,7 +21,7 @@ export type StoredObjectHead = {
 }
 
 export interface ObjectStorage {
-  readonly driver: 'memory' | 's3'
+  readonly driver: 'memory' | 's3' | 'cloudinary'
   ensureReady(): Promise<void>
   presignPut(
     input: PresignPutInput

@@ -1,8 +1,9 @@
 import { Module } from '@nestjs/common'
 import { ConfigService } from '@nestjs/config'
 import { Queue } from 'bullmq'
-import Redis from 'ioredis'
 import type { Env } from '../../infrastructure/config/env'
+import { createTeamhubIoredis } from '../../infrastructure/redis/create-ioredis'
+import { RedisLifecycle } from '../../infrastructure/redis/redis-lifecycle'
 import { FilesModule } from '../files/files.module'
 import { CleanupDemoGuestsUseCase } from './application/cleanup-demo-guests.use-case'
 import { DEMO_CLEANUP_QUEUE } from './demo.tokens'
@@ -17,13 +18,17 @@ import { DemoCleanupWorker } from './infrastructure/demo-cleanup.worker'
   providers: [
     {
       provide: DEMO_CLEANUP_QUEUE,
-      useFactory: (config: ConfigService<Env, true>) => {
-        const connection = new Redis(config.get('REDIS_URL', { infer: true }), {
-          maxRetriesPerRequest: null
-        })
+      useFactory: (
+        config: ConfigService<Env, true>,
+        lifecycle: RedisLifecycle
+      ) => {
+        const connection = createTeamhubIoredis(
+          config.get('REDIS_URL', { infer: true }),
+          lifecycle
+        )
         return new Queue(DEMO_CLEANUP_QUEUE_NAME, { connection })
       },
-      inject: [ConfigService]
+      inject: [ConfigService, RedisLifecycle]
     },
     CleanupDemoGuestsUseCase,
     DemoCleanupQueue,

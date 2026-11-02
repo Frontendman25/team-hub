@@ -6,7 +6,9 @@ import {
   OnModuleInit
 } from '@nestjs/common'
 import type { Queue } from 'bullmq'
-import { INVITATION_QUEUE } from '../workspaces.tokens'
+import { RedisLifecycle } from '../../../infrastructure/redis/redis-lifecycle'
+import type { WorkspaceRepository } from '../domain/workspace.repository'
+import { INVITATION_QUEUE, WORKSPACES_REPOSITORY } from '../workspaces.tokens'
 
 export const INVITATION_QUEUE_NAME = 'teamhub-invitations'
 
@@ -16,11 +18,31 @@ export class InvitationQueue implements OnModuleInit, OnModuleDestroy {
 
   constructor(
     @Inject(INVITATION_QUEUE)
-    private readonly queue: Queue
+    private readonly queue: Queue,
+    @Inject(WORKSPACES_REPOSITORY)
+    private readonly workspaces: WorkspaceRepository,
+    private readonly lifecycle: RedisLifecycle
   ) {}
 
   async onModuleInit(): Promise<void> {
     await this.queue.waitUntilReady()
+    this.lifecycle.onRestored(async () => {
+      await this.recoverFromPostgres()
+    })
+  }
+
+  async recoverFromPostgres(): Promise<number> {
+    const ids =
+      await this.workspaces.listPendingInvitationsMissingNotification()
+    for (const invitationId of ids) {
+      await this.enqueueNotify(invitationId)
+    }
+    if (ids.length > 0) {
+      this.logger.warn(
+        `Re-queued ${ids.length} pending invitation notify job(s) from PostgreSQL after Redis restore`
+      )
+    }
+    return ids.length
   }
 
   async onModuleDestroy(): Promise<void> {

@@ -20,7 +20,7 @@ export class GetDownloadUseCase {
       input.actorId
     )
     const disposition = contentDisposition(file.originalName, file.contentType)
-    if (this.storage.driver === 'memory') {
+    if (this.storage.driver !== 's3') {
       return {
         strategy: 'proxy' as const,
         url: `/files/${file.id}/content`,

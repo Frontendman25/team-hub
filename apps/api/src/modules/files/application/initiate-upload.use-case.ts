@@ -84,9 +84,12 @@ export class InitiateUploadUseCase {
       byteSize: input.byteSize,
       expiresInSeconds: FILE_UPLOAD_URL_TTL_SECONDS
     })
+    const strategy = this.storage.driver === 's3' ? 'presigned' : 'proxy'
     return {
       file: serializeFile(file),
-      uploadUrl: upload.url,
+      strategy,
+      uploadUrl:
+        strategy === 'proxy' ? `/files/${file.id}/content` : upload.url,
       uploadHeaders: upload.headers,
       expiresAt: upload.expiresAt.toISOString()
     }

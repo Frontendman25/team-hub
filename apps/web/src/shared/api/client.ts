@@ -248,6 +248,7 @@ export const api = {
     ) =>
       apiFetch<{
         file: FileAttachment
+        strategy?: 'proxy' | 'presigned'
         uploadUrl: string
         uploadHeaders: Record<string, string>
         expiresAt: string

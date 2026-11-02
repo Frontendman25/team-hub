@@ -3,6 +3,7 @@ import { IoAdapter } from '@nestjs/platform-socket.io'
 import { createAdapter } from '@socket.io/redis-adapter'
 import Redis from 'ioredis'
 import type { Server, ServerOptions } from 'socket.io'
+import { teamhubIoredisOptions } from '../redis/ioredis-options'
 
 export class RedisIoAdapter extends IoAdapter {
   private readonly log = new Logger(RedisIoAdapter.name)
@@ -21,7 +22,7 @@ export class RedisIoAdapter extends IoAdapter {
 
   async connectToRedis(redisUrl: string): Promise<void> {
     const pubClient = new Redis(redisUrl, {
-      maxRetriesPerRequest: null,
+      ...teamhubIoredisOptions(),
       connectTimeout: 10_000
     })
     const subClient = pubClient.duplicate()

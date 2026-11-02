@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common'
-import { and, count, eq, ne, sql } from 'drizzle-orm'
+import { and, count, eq, gt, isNull, ne, sql } from 'drizzle-orm'
 import type { Database } from '../../../infrastructure/database/drizzle.service'
+import { notifications } from '../../../infrastructure/database/schema/notifications'
 import { profiles } from '../../../infrastructure/database/schema/profiles'
 import { users } from '../../../infrastructure/database/schema/users'
 import { conversations } from '../../../infrastructure/database/schema/messaging'
@@ -370,6 +371,28 @@ export class DrizzleWorkspaceRepository implements WorkspaceRepository {
       )
     )
     return rows.map((row) => this.toInvitation(row))
+  }
+
+  async listPendingInvitationsMissingNotification(): Promise<string[]> {
+    const rows = await this.db
+      .select({ id: workspaceInvitations.id })
+      .from(workspaceInvitations)
+      .innerJoin(users, eq(users.email, workspaceInvitations.email))
+      .leftJoin(
+        notifications,
+        and(
+          eq(notifications.invitationId, workspaceInvitations.id),
+          eq(notifications.type, 'invitation')
+        )
+      )
+      .where(
+        and(
+          eq(workspaceInvitations.status, 'pending'),
+          gt(workspaceInvitations.expiresAt, new Date()),
+          isNull(notifications.id)
+        )
+      )
+    return rows.map((row) => row.id)
   }
 
   async setInvitationStatus(

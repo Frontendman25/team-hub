@@ -46,7 +46,10 @@ export const envSchema = z.object({
       (value) => value === undefined || value.length >= 16,
       'AUTH_PROXY_SECRET must be at least 16 characters'
     ),
-  STORAGE_DRIVER: z.enum(['memory', 's3']).optional(),
+  STORAGE_DRIVER: z.enum(['memory', 's3', 'cloudinary']).optional(),
+  CLOUDINARY_CLOUD_NAME: z.string().min(1).optional(),
+  CLOUDINARY_API_KEY: z.string().min(1).optional(),
+  CLOUDINARY_API_SECRET: z.string().min(1).optional(),
   S3_ENDPOINT: z.string().url().optional(),
   S3_PUBLIC_ENDPOINT: z.string().url().optional(),
   S3_REGION: z.string().min(1).default('us-east-1'),
@@ -118,9 +121,22 @@ export function validateEnv(config: Record<string, unknown>): Env {
     }
   }
 
+  if (driver === 'cloudinary') {
+    const missing = [
+      'CLOUDINARY_CLOUD_NAME',
+      'CLOUDINARY_API_KEY',
+      'CLOUDINARY_API_SECRET'
+    ].filter((name) => !parsed.data[name as keyof Env])
+    if (missing.length > 0) {
+      throw new Error(
+        `Invalid environment: STORAGE_DRIVER=cloudinary requires ${missing.join(', ')}`
+      )
+    }
+  }
+
   if (parsed.data.NODE_ENV === 'production' && driver === 'memory') {
     throw new Error(
-      'Invalid environment: production requires STORAGE_DRIVER=s3'
+      'Invalid environment: production requires STORAGE_DRIVER=s3 or cloudinary'
     )
   }
 

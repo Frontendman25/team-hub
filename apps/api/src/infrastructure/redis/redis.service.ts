@@ -7,18 +7,33 @@ import {
 import { ConfigService } from '@nestjs/config'
 import { createClient, type RedisClientType } from 'redis'
 import type { Env } from '../config/env'
+import { RedisLifecycle } from './redis-lifecycle'
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(RedisService.name)
   private readonly client: RedisClientType
+  private sawReady = false
 
-  constructor(config: ConfigService<Env, true>) {
+  constructor(
+    config: ConfigService<Env, true>,
+    private readonly lifecycle: RedisLifecycle
+  ) {
     this.client = createClient({
-      url: config.get('REDIS_URL', { infer: true })
+      url: config.get('REDIS_URL', { infer: true }),
+      socket: {
+        reconnectStrategy: (retries) => Math.min(200 * retries, 2000)
+      }
     })
     this.client.on('error', (error: Error) => {
       this.logger.warn(`Redis error: ${error.message}`)
+    })
+    this.client.on('ready', () => {
+      if (!this.sawReady) {
+        this.sawReady = true
+        return
+      }
+      void this.lifecycle.notifyRestored('node-redis')
     })
   }
 
