@@ -1,37 +1,31 @@
 {
 	auto_https off
 	servers {
+		# Render is the only public ingress and terminates HTTPS upstream.
 		trusted_proxies static 0.0.0.0/0 ::/0
 	}
 }
 
 :{$PORT:10000} {
 	handle /socket.io* {
-		reverse_proxy 127.0.0.1:3200 {
+		reverse_proxy 127.0.0.1:{$PORT_API:3200} {
 			flush_interval -1
-			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
-			header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
 		}
 	}
 
 	handle /api/* {
 		encode gzip
 		uri strip_prefix /api
-		reverse_proxy 127.0.0.1:3200 {
-			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
-			header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
-		}
+		reverse_proxy 127.0.0.1:{$PORT_API:3200}
 	}
 
 	handle /healthz {
-		reverse_proxy 127.0.0.1:3200/health/live
+		rewrite * /health/live
+		reverse_proxy 127.0.0.1:{$PORT_API:3200}
 	}
 
 	handle {
 		encode gzip
-		reverse_proxy 127.0.0.1:3000 {
-			header_up X-Forwarded-Proto {http.request.header.X-Forwarded-Proto}
-			header_up X-Forwarded-For {http.request.header.X-Forwarded-For}
-		}
+		reverse_proxy 127.0.0.1:{$PORT_WEB:3000}
 	}
 }
