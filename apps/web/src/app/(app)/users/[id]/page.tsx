@@ -39,11 +39,11 @@ export default async function UserPage({
 
   try {
     await Promise.all([
-      queryClient.prefetchQuery(userQueries.detail(id)),
+      queryClient.fetchQuery({ ...userQueries.detail(id), retry: false }),
       queryClient.prefetchQuery(userQueries.me())
     ])
   } catch (error) {
-    if (error instanceof ApiError && error.status === 404) {
+    if (error instanceof ApiError && (error.status === 404 || error.status === 403)) {
       notFound()
     }
     throw error

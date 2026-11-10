@@ -2,13 +2,13 @@
 
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
+import { canStartDirectMessage, openDmOnce } from '@/entities/conversation/model/dm-policy'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { conversationKeys } from '@/entities/conversation/api/queries'
 import { userQueries } from '@/entities/user/api/queries'
 import { workspaceQueries } from '@/entities/workspace/api/queries'
 import { api } from '@/shared/api/client'
-import { ApiError } from '@/shared/lib/api'
 import type { Conversation } from '@/shared/types/api'
 import { Avatar } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
@@ -27,13 +27,20 @@ export function WorkspaceMembers({
   const me = useQuery(userQueries.me())
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
-  const canMessage = Boolean(me.data)
+  const dmLock = useRef(false)
+  const canMessage = canStartDirectMessage(me.data?.accountKind, workspaceId)
 
-  async function message(userId: string) {
-    setPendingId(userId)
-    setError(null)
-    try {
-      const conversation = await api.messaging.openDm(workspaceId, userId)
+  const message = (userId: string) => openDmOnce({
+    lock: dmLock,
+    allowed: canMessage,
+    userId,
+    request: () => api.messaging.openDm(workspaceId, userId),
+    onPending: (pending) => {
+      setPendingId(pending ? userId : null)
+      if (pending) setError(null)
+    },
+    onError: () => setError('Could not open this conversation. Please try again.'),
+    onSuccess: async (conversation) => {
       queryClient.setQueryData<Conversation[]>(
         conversationKeys.list(workspaceId),
         (current) => upsertConversation(current, conversation)
@@ -42,13 +49,8 @@ export function WorkspaceMembers({
         queryKey: conversationKeys.list(workspaceId)
       })
       router.push(`/w/${slug}/messages/${conversation.id}`)
-    } catch (cause) {
-      setError(
-        cause instanceof ApiError ? cause.message : 'Could not open a conversation'
-      )
-      setPendingId(null)
     }
-  }
+  })
 
   if (members.isLoading) {
     return (
@@ -75,7 +77,14 @@ export function WorkspaceMembers({
 
   return (
     <section className="rounded-2xl border border-border bg-white p-2 shadow-sm">
-      {error ? <p className="px-3 py-2 text-sm text-red-600">{error}</p> : null}
+      {error ? <p role="alert" className="px-3 py-2 text-sm text-red-600">{error}</p> : null}
+      {me.data?.accountKind === 'guest' ? (
+        <p className="px-3 py-2 text-sm text-muted-foreground">
+          Private messages require an account.{' '}
+          <Link href="/register" className="font-medium underline">Create an account</Link>.
+          You can still write in demo channels.
+        </p>
+      ) : null}
       <ul className="divide-y divide-border">
         {items.map((member) => {
           const self = member.userId === me.data?.id
@@ -108,7 +117,7 @@ export function WorkspaceMembers({
                   type="button"
                   variant="outline"
                   className="h-8 shrink-0"
-                  disabled={pendingId === member.userId}
+                  disabled={pendingId !== null}
                   onClick={() => void message(member.userId)}
                 >
                   {pendingId === member.userId ? 'Opening…' : 'Message'}

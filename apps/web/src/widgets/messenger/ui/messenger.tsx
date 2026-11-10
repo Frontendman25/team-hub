@@ -17,6 +17,7 @@ import { conversationKeys, conversationQueries, messageQueries } from '@/entitie
 import { searchQueries } from '@/entities/search/api/queries'
 import { SearchResults } from '@/features/search/ui/search-results'
 import { useDebouncedValue } from '@/shared/lib/use-debounced-value'
+import { canStartDirectMessage, openDmOnce } from '@/entities/conversation/model/dm-policy'
 import { previewChannels } from '@/entities/conversation/model/preview-channels'
 import { flattenMessagePages, markFailed, upsertMessage } from '@/entities/message/model/merge-messages'
 import { userQueries } from '@/entities/user/api/queries'
@@ -75,6 +76,10 @@ export function Messenger({
   const me = useQuery(userQueries.me())
   const members = useQuery(workspaceQueries.members(workspaceId))
   const list = useQuery(conversationQueries.list(workspaceId))
+  const dmLock = useRef(false)
+  const [dmPending, setDmPending] = useState(false)
+  const [dmError, setDmError] = useState<string | null>(null)
+  const canStartDm = canStartDirectMessage(me.data?.accountKind, workspaceId)
   const [query, setQuery] = useState('')
   const [creating, setCreating] = useState(false)
   const [channelsExpanded, setChannelsExpanded] = useState(false)
@@ -127,27 +132,37 @@ export function Messenger({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [conversationId, workspaceId])
 
-  const startDm = async (userId: string) => {
-    const conversation = await api.messaging.openDm(workspaceId, userId)
-    queryClient.setQueryData<Conversation[]>(
-      conversationKeys.list(workspaceId),
-      (current) => {
-        if (!current) {
-          return [conversation]
+  const startDm = (userId: string) => openDmOnce({
+    lock: dmLock,
+    allowed: canStartDm,
+    userId,
+    request: () => api.messaging.openDm(workspaceId, userId),
+    onPending: (pending) => {
+      setDmPending(pending)
+      if (pending) setDmError(null)
+    },
+    onError: () => setDmError('Could not open this conversation. Please try again.'),
+    onSuccess: async (conversation) => {
+      queryClient.setQueryData<Conversation[]>(
+        conversationKeys.list(workspaceId),
+        (current) => {
+          if (!current) {
+            return [conversation]
+          }
+          if (!current.some((row) => row.id === conversation.id)) {
+            return [conversation, ...current]
+          }
+          return current.map((row) =>
+            row.id === conversation.id ? conversation : row
+          )
         }
-        if (!current.some((row) => row.id === conversation.id)) {
-          return [conversation, ...current]
-        }
-        return current.map((row) =>
-          row.id === conversation.id ? conversation : row
-        )
-      }
-    )
-    await queryClient.invalidateQueries({
-      queryKey: conversationKeys.list(workspaceId)
-    })
-    router.push(`/w/${slug}/messages/${conversation.id}`)
-  }
+      )
+      await queryClient.invalidateQueries({
+        queryKey: conversationKeys.list(workspaceId)
+      })
+      router.push(`/w/${slug}/messages/${conversation.id}`)
+    }
+  })
 
   return (
     <div className="flex h-[calc(100dvh-11.5rem)] min-h-[22rem] overflow-hidden rounded-2xl border border-border bg-white shadow-sm md:h-[calc(100dvh-8rem)] md:min-h-[28rem]">
@@ -256,7 +271,15 @@ export function Messenger({
                   )}
                 />
               ))}
-              <PeoplePreview
+              {dmError ? <p role="alert" className="px-2 py-2 text-sm text-red-600">{dmError}</p> : null}
+              {me.data?.accountKind === 'guest' ? (
+                <p className="px-2 py-2 text-sm text-muted-foreground">
+                  Private direct messages are not available to demo guests.{' '}
+                  <Link href="/register" className="font-medium underline">Create an account</Link>
+                  {' '}to start a private conversation. You can still write in demo channels.
+                </p>
+              ) : null}
+              {canStartDm ? <PeoplePreview
                 members={(members.data ?? []).filter(
                   (member) =>
                     member.userId !== me.data?.id &&
@@ -267,7 +290,8 @@ export function Messenger({
                 onlineIds={realtime.onlineIds}
                 membersHref={`/w/${slug}/members`}
                 onStart={(userId) => void startDm(userId)}
-              />
+                pending={dmPending}
+              /> : null}
             </>
           )}
         </div>
@@ -361,12 +385,14 @@ function PeoplePreview({
   members,
   onlineIds,
   membersHref,
-  onStart
+  onStart,
+  pending
 }: {
   members: WorkspaceMember[]
   onlineIds: string[]
   membersHref: string
   onStart: (userId: string) => void
+  pending: boolean
 }) {
   const preview = members.slice(0, MEMBER_PREVIEW_COUNT)
   const hidden = members.length - preview.length
@@ -380,6 +406,7 @@ function PeoplePreview({
           key={member.userId}
           type="button"
           className="flex w-full items-center gap-2 rounded-xl px-2 py-2 text-left text-sm hover:bg-muted"
+          disabled={pending}
           onClick={() => onStart(member.userId)}
         >
           <span className="relative">

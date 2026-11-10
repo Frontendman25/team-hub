@@ -11,8 +11,11 @@ import { CreateWorkspaceForm } from '@/features/workspaces/ui/create-workspace-f
 export function InvitationsView() {
   const router = useRouter()
   const queryClient = useQueryClient()
-  const invites = useQuery(workspaceQueries.mine())
   const me = useQuery(userQueries.me())
+  const invites = useQuery({
+    ...workspaceQueries.mine(),
+    enabled: Boolean(me.data) && me.data?.accountKind !== 'guest'
+  })
 
   const accept = useMutation({
     mutationFn: (id: string) => api.invitations.accept(id),
@@ -33,7 +36,12 @@ export function InvitationsView() {
     <div className="space-y-6">
       <section className="rounded-2xl border border-border bg-white p-5">
         <h1 className="text-lg font-semibold">Pending invitations</h1>
-        {invites.isPending ? (
+        {me.data?.accountKind === 'guest' ? (
+          <p className="mt-3 text-sm text-muted-foreground">
+            Invitations are available to registered users.{' '}
+            <a href="/register" className="font-medium underline">Create an account</a>.
+          </p>
+        ) : invites.isPending ? (
           <p className="mt-3 text-sm text-muted-foreground">Loading…</p>
         ) : (invites.data ?? []).length === 0 ? (
           <p className="mt-3 text-sm text-muted-foreground">

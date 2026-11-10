@@ -31,7 +31,8 @@ export const userQueries = {
   }),
   detail: (id: string) => ({
     queryKey: userKeys.detail(id),
-    queryFn: (): Promise<PublicUser> => api.users.get(id)
+    queryFn: (): Promise<PublicUser> => api.users.get(id),
+    retry: false
   })
 }
 

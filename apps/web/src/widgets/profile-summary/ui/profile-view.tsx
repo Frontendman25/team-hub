@@ -7,16 +7,23 @@ import { useCurrentWorkspace } from '@/entities/workspace/model/use-current-work
 import { ProfileSummary } from '@/widgets/profile-summary/ui/profile-summary'
 import { PostCard } from '@/widgets/post-card/ui/post-card'
 import { RightSidebar } from '@/widgets/right-sidebar/ui/right-sidebar'
+import { ProfileUnavailable } from './profile-unavailable'
 import { Skeleton } from '@/shared/ui/skeleton'
 
 export function ProfileView({ userId }: { userId: string }) {
   const user = useQuery(userQueries.detail(userId))
   const me = useQuery(userQueries.me())
   const { current } = useCurrentWorkspace()
-  const posts = useQuery(postQueries.list(current?.id ?? '', userId))
+  const posts = useQuery({
+    ...postQueries.list(current?.id ?? '', userId),
+    enabled: Boolean(current?.id && user.data)
+  })
 
-  if (user.isLoading || !user.data) {
+  if (user.isPending) {
     return <Skeleton className="h-40" />
+  }
+  if (user.isError || !user.data) {
+    return <ProfileUnavailable />
   }
 
   return (
