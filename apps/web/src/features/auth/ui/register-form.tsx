@@ -4,19 +4,17 @@ import { useMutation, useQueryClient } from '@tanstack/react-query'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { useState } from 'react'
-import { z } from 'zod'
 import { api } from '@/shared/api/client'
 import { invalidateViewerQueries } from '@/shared/lib/session-cache'
-import { ApiError } from '@/shared/lib/api'
+import {
+  registerSchema,
+  registerFieldErrors,
+  registerServerError,
+  type RegisterFieldErrors,
+  type RegisterValues
+} from '../model/register-validation'
 import { Button } from '@/shared/ui/button'
 import { TryDemoButton } from './try-demo-button'
-
-const schema = z.object({
-  displayName: z.string().trim().min(2),
-  email: z.string().email(),
-  password: z.string().min(8),
-  jobTitle: z.string().trim().optional()
-})
 
 export function RegisterForm() {
   const router = useRouter()
@@ -26,85 +24,156 @@ export function RegisterForm() {
   const [password, setPassword] = useState('')
   const [jobTitle, setJobTitle] = useState('')
   const [error, setError] = useState<string | null>(null)
+  const [fieldErrors, setFieldErrors] = useState<RegisterFieldErrors>({})
+
+  function clearFieldError(field: keyof RegisterValues) {
+    setFieldErrors((current) => ({ ...current, [field]: undefined }))
+    setError(null)
+  }
 
   const mutation = useMutation({
-    mutationFn: () =>
-      api.auth.register({
-        email,
-        password,
-        displayName,
-        jobTitle: jobTitle || undefined
-      }),
+    mutationFn: (values: RegisterValues) => api.auth.register(values),
     onSuccess: async () => {
       await invalidateViewerQueries(queryClient)
       router.push('/')
       router.refresh()
     },
     onError: (cause) => {
-      setError(
-        cause instanceof ApiError ? cause.message : 'Could not create account'
-      )
+      const failure = registerServerError(cause)
+      setFieldErrors(failure.fields)
+      setError(failure.message)
     }
   })
 
   return (
     <form
       className="space-y-4"
+      noValidate
       onSubmit={(event) => {
         event.preventDefault()
-        const parsed = schema.safeParse({
+        if (mutation.isPending) return
+        setError(null)
+        const parsed = registerSchema.safeParse({
           displayName,
           email,
           password,
           jobTitle
         })
         if (!parsed.success) {
-          setError('Name, valid email, and a password of at least 8 characters')
+          setFieldErrors(registerFieldErrors(parsed.error.issues))
           return
         }
-        setError(null)
-        mutation.mutate()
+        setFieldErrors({})
+        mutation.mutate(parsed.data)
       }}
     >
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Name</span>
         <input
           value={displayName}
-          onChange={(event) => setDisplayName(event.target.value)}
+          onChange={(event) => {
+            setDisplayName(event.target.value)
+            clearFieldError('displayName')
+          }}
+          aria-invalid={Boolean(fieldErrors.displayName)}
+          aria-describedby={
+            fieldErrors.displayName ? 'register-name-error' : undefined
+          }
           className="h-10 w-full rounded-lg border border-border px-3"
           autoComplete="name"
         />
+        {fieldErrors.displayName ? (
+          <span
+            id="register-name-error"
+            role="alert"
+            className="block text-red-600"
+          >
+            {fieldErrors.displayName}
+          </span>
+        ) : null}
       </label>
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Job title</span>
         <input
           value={jobTitle}
-          onChange={(event) => setJobTitle(event.target.value)}
+          onChange={(event) => {
+            setJobTitle(event.target.value)
+            clearFieldError('jobTitle')
+          }}
+          aria-invalid={Boolean(fieldErrors.jobTitle)}
+          aria-describedby={
+            fieldErrors.jobTitle ? 'register-job-title-error' : undefined
+          }
           className="h-10 w-full rounded-lg border border-border px-3"
           placeholder="Team member"
         />
+        {fieldErrors.jobTitle ? (
+          <span
+            id="register-job-title-error"
+            role="alert"
+            className="block text-red-600"
+          >
+            {fieldErrors.jobTitle}
+          </span>
+        ) : null}
       </label>
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Email</span>
         <input
           type="email"
           value={email}
-          onChange={(event) => setEmail(event.target.value)}
+          onChange={(event) => {
+            setEmail(event.target.value)
+            clearFieldError('email')
+          }}
+          aria-invalid={Boolean(fieldErrors.email)}
+          aria-describedby={
+            fieldErrors.email ? 'register-email-error' : undefined
+          }
           className="h-10 w-full rounded-lg border border-border px-3"
           autoComplete="email"
         />
+        {fieldErrors.email ? (
+          <span
+            id="register-email-error"
+            role="alert"
+            className="block text-red-600"
+          >
+            {fieldErrors.email}
+          </span>
+        ) : null}
       </label>
       <label className="block space-y-1 text-sm">
         <span className="font-medium">Password</span>
         <input
           type="password"
           value={password}
-          onChange={(event) => setPassword(event.target.value)}
+          onChange={(event) => {
+            setPassword(event.target.value)
+            clearFieldError('password')
+          }}
+          aria-invalid={Boolean(fieldErrors.password)}
+          aria-describedby={
+            fieldErrors.password ? 'register-password-error' : undefined
+          }
           className="h-10 w-full rounded-lg border border-border px-3"
           autoComplete="new-password"
         />
+        {fieldErrors.password ? (
+          <span
+            id="register-password-error"
+            role="alert"
+            className="block text-red-600"
+          >
+            {fieldErrors.password}
+          </span>
+        ) : null}
       </label>
-      {error ? <p className="text-sm text-red-600">{error}</p> : null}
+      {error ? (
+        <p role="alert" className="text-sm text-red-600">
+          {error}
+        </p>
+      ) : null}
       <Button type="submit" className="w-full" disabled={mutation.isPending}>
         {mutation.isPending ? 'Creating…' : 'Create account'}
       </Button>
