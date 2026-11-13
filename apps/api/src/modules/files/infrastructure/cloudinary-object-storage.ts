@@ -62,6 +62,13 @@ export class CloudinaryObjectStorage implements ObjectStorage {
   }
 
   async head(objectKey: string): Promise<StoredObjectHead | null> {
+    const resource = await this.findResource(objectKey)
+    return resource
+      ? { byteSize: resource.bytes, contentType: undefined }
+      : null
+  }
+
+  private async findResource(objectKey: string) {
     const publicId = cloudinaryPublicId(objectKey)
     for (const resourceType of ['image', 'video', 'raw'] as const) {
       const url = `https://api.cloudinary.com/v1_1/${this.cloudName}/resources/${resourceType}/authenticated/${encodeURIComponent(publicId)}`
@@ -82,8 +89,9 @@ export class CloudinaryObjectStorage implements ObjectStorage {
         format?: string
       }
       return {
-        byteSize: body.bytes ?? 0,
-        contentType: undefined
+        bytes: body.bytes ?? 0,
+        format: body.format,
+        resourceType
       }
     }
     return null
@@ -91,12 +99,13 @@ export class CloudinaryObjectStorage implements ObjectStorage {
 
   async getStream(objectKey: string, range?: { start: number; end: number }) {
     const publicId = cloudinaryPublicId(objectKey)
-    let lastType: 'image' | 'video' | 'raw' = 'raw'
-    for (const resourceType of ['image', 'video', 'raw'] as const) {
+    const resource = await this.findResource(objectKey)
+    if (resource) {
       const delivery = signedAuthenticatedDeliveryUrl({
         cloudName: this.cloudName,
-        resourceType,
+        resourceType: resource.resourceType,
         publicId,
+        format: resource.format,
         apiSecret: this.apiSecret
       })
       const headers: Record<string, string> = {}
@@ -104,15 +113,11 @@ export class CloudinaryObjectStorage implements ObjectStorage {
         headers.Range = `bytes=${range.start}-${range.end}`
       }
       const response = await this.fetchImpl(delivery, { headers })
-      if (response.status === 404 || response.status === 401) {
-        lastType = resourceType
-        continue
-      }
       if (!response.ok || !response.body) {
         this.logger.warn(
-          `Cloudinary getStream ${response.status} ${resourceType}`
+          `Cloudinary getStream ${response.status} ${resource.resourceType}`
         )
-        continue
+        return null
       }
       const contentLength = Number(response.headers.get('content-length') ?? 0)
       const totalFromRange = parseTotalFromContentRange(
@@ -124,7 +129,7 @@ export class CloudinaryObjectStorage implements ObjectStorage {
         contentLength
       }
     }
-    this.logger.warn(`Cloudinary object missing (${lastType}): ${publicId}`)
+    this.logger.warn(`Cloudinary object missing: ${publicId}`)
     return null
   }
 

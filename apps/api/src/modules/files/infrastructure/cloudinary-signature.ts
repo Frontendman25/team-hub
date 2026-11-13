@@ -27,9 +27,15 @@ export function signedAuthenticatedDeliveryUrl(input: {
   cloudName: string
   resourceType: 'image' | 'video' | 'raw'
   publicId: string
+  format?: string
   apiSecret: string
 }): string {
-  const toSign = input.publicId
+  // For image/video the extension is separate from the public ID, even when
+  // that ID already ends in e.g. '.webm'. Raw IDs include their own extension.
+  const toSign =
+    input.resourceType !== 'raw' && input.format
+      ? `${input.publicId}.${input.format}`
+      : input.publicId
   const signature = cloudinaryDeliverySignature(toSign, input.apiSecret)
   return `https://res.cloudinary.com/${input.cloudName}/${input.resourceType}/authenticated/s--${signature}--/${toSign}`
 }
