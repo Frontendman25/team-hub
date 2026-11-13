@@ -24,10 +24,20 @@ process.env.SOCKET_IO_REDIS_REQUIRED =
 process.env.RUN_BACKGROUND_JOBS = process.env.RUN_BACKGROUND_JOBS ?? 'true'
 
 function spawnNamed(name, command, args, extraEnv = {}, required = true) {
-  const child = spawn(command, args, {
-    stdio: 'inherit',
-    env: { ...process.env, ...extraEnv }
-  })
+  if (shuttingDown) {
+    return null
+  }
+  log(`starting ${name}`)
+  let child
+  try {
+    child = spawn(command, args, {
+      stdio: 'inherit',
+      env: { ...process.env, ...extraEnv }
+    })
+  } catch (error) {
+    startupFailed(name, error)
+    return null
+  }
   const entry = { child, exited: false, done: null }
   entry.done = new Promise((resolve) => {
     child.once('close', (code) => {
@@ -37,9 +47,7 @@ function spawnNamed(name, command, args, extraEnv = {}, required = true) {
   })
   children.push(entry)
   child.once('error', (error) => {
-    log(`${name} failed to start: ${error.code ?? error.message}`)
-    exitCode = 1
-    void shutdown('SIGTERM')
+    startupFailed(name, error)
   })
   child.once('exit', (code, signal) => {
     entry.exited = true
@@ -51,6 +59,16 @@ function spawnNamed(name, command, args, extraEnv = {}, required = true) {
     void shutdown('SIGTERM')
   })
   return entry
+}
+
+function startupFailed(name, error) {
+  // Do not log the error object/message: it can contain arguments or env data.
+  const code = typeof error?.code === 'string' && /^[A-Z0-9_]+$/.test(error.code)
+    ? error.code
+    : 'UNKNOWN'
+  log(`${name} failed to start: ${code}`)
+  exitCode = 1
+  void shutdown('SIGTERM')
 }
 
 async function shutdown(signal) {
@@ -91,13 +109,11 @@ if (process.env.RUN_MIGRATE_ON_BOOT === 'true') {
     {},
     false
   )
-  const code = await migrate.done
-  if (shuttingDown) {
-    // shutdown() owns process termination; never start new children here.
-    await new Promise(() => {})
-  }
-  if (code !== 0) {
-    process.exit(code)
+  if (migrate) {
+    const code = await migrate.done
+    if (!shuttingDown && code !== 0) {
+      process.exit(code)
+    }
   }
 }
 

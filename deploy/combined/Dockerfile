@@ -52,6 +52,13 @@ RUN addgroup -S appgroup && adduser -S appuser -G appgroup \
   && apk add --no-cache ca-certificates
 
 COPY --from=caddy:2.9-alpine /usr/bin/caddy /usr/bin/caddy
+# Caddy's upstream binary can carry cap_net_bind_service=+ep. Render supplies
+# an unprivileged PORT; exec of a capability-bearing file may fail with EPERM
+# under a restricted capability bounding set. Copy bytes to a fresh inode so
+# security.capability is not carried into runtime (no extra packages required).
+RUN cat /usr/bin/caddy > /usr/bin/caddy.unprivileged \
+  && chmod 0755 /usr/bin/caddy.unprivileged \
+  && mv /usr/bin/caddy.unprivileged /usr/bin/caddy
 
 COPY --from=prod-deps --chown=appuser:appgroup /repo/node_modules ./node_modules
 COPY --from=prod-deps --chown=appuser:appgroup /repo/package.json ./package.json
@@ -64,6 +71,7 @@ COPY --chown=appuser:appgroup deploy/combined/Caddyfile /app/Caddyfile
 COPY --chown=appuser:appgroup deploy/combined/supervise.mjs /app/supervise.mjs
 
 USER appuser
+RUN /usr/bin/caddy version
 EXPOSE 10000
 STOPSIGNAL SIGTERM
 HEALTHCHECK --interval=15s --timeout=5s --start-period=45s --retries=5 \

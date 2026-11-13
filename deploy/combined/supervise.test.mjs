@@ -9,14 +9,16 @@ import { SourceTextModule, SyntheticModule, createContext } from 'node:vm'
 const source = await readFile(new URL('./supervise.mjs', import.meta.url), 'utf8')
 const settle = () => new Promise((resolve) => setImmediate(resolve))
 
-async function fixture(env = {}) {
+async function fixture(env = {}, { throwAt } = {}) {
   const children = []
   const timers = new Set()
   const exits = []
+  const logs = []
+  let attempts = 0
   const proc = Object.assign(new EventEmitter(), {
     env: { ...env },
     execPath: '/usr/bin/node',
-    stderr: { write() {} },
+    stderr: { write(message) { logs.push(message) } },
     exit(code) { exits.push(code) }
   })
   const context = createContext({
@@ -26,6 +28,11 @@ async function fixture(env = {}) {
   })
   const dependency = new SyntheticModule(['spawn'], function () {
     this.setExport('spawn', (command, args, options) => {
+      if (attempts++ === throwAt) {
+        throw Object.assign(new Error('SECRET must not appear in diagnostics'), {
+          code: 'EPERM'
+        })
+      }
       const child = Object.assign(new EventEmitter(), {
         command, args, options, signals: [], killed: false,
         kill(signal) { this.killed = true; this.signals.push(signal) },
@@ -43,7 +50,7 @@ async function fixture(env = {}) {
   const evaluation = module.evaluate()
   if (env.RUN_MIGRATE_ON_BOOT !== 'true') await evaluation
   await settle()
-  return { children, timers, exits, proc }
+  return { children, timers, exits, logs, proc }
 }
 
 test('SIGTERM reaches all three children and waits for actual exits', async () => {
@@ -51,6 +58,10 @@ test('SIGTERM reaches all three children and waits for actual exits', async () =
   assert.equal(f.children.length, 3)
   assert.equal(f.children[0].options.env.PORT, '4200')
   assert.equal(f.children[1].options.env.API_INTERNAL_URL, 'http://127.0.0.1:4200')
+  for (const child of f.children) {
+    assert.equal(Object.hasOwn(child.options, 'uid'), false)
+    assert.equal(Object.hasOwn(child.options, 'gid'), false)
+  }
   f.proc.emit('SIGTERM')
   for (const child of f.children) assert.deepEqual(child.signals, ['SIGTERM'])
   assert.deepEqual(f.exits, [])
@@ -90,7 +101,7 @@ test('any required process exiting, even with zero, stops siblings and fails', a
 
 test('spawn error terminates siblings instead of leaving a partial service', async () => {
   const f = await fixture()
-  f.children[2].emit('error', Object.assign(new Error('missing'), { code: 'ENOENT' }))
+  f.children[2].emit('error', Object.assign(new Error('SECRET'), { code: 'EPERM' }))
   f.children[2].emit('close', -2)
   for (const child of f.children.slice(0, 2)) {
     assert.deepEqual(child.signals, ['SIGTERM'])
@@ -98,6 +109,31 @@ test('spawn error terminates siblings instead of leaving a partial service', asy
   }
   await settle()
   assert.deepEqual(f.exits, [1])
+  assert.match(f.logs.join(''), /caddy failed to start: EPERM/)
+  assert.doesNotMatch(f.logs.join(''), /SECRET/)
+})
+
+test('synchronous spawn EPERM stops earlier children and prevents later starts', async () => {
+  for (const [index, name] of ['api', 'web', 'caddy'].entries()) {
+    const f = await fixture({}, { throwAt: index })
+    assert.equal(f.children.length, index)
+    for (const child of f.children) {
+      assert.deepEqual(child.signals, ['SIGTERM'])
+      child.finish()
+    }
+    await settle()
+    assert.deepEqual(f.exits, [1])
+    assert.match(f.logs.join(''), new RegExp(`${name} failed to start: EPERM`))
+    assert.doesNotMatch(f.logs.join(''), /SECRET/)
+  }
+})
+
+test('synchronous migration spawn failure exits nonzero without starting services', async () => {
+  const f = await fixture({ RUN_MIGRATE_ON_BOOT: 'true' }, { throwAt: 0 })
+  assert.equal(f.children.length, 0)
+  assert.deepEqual(f.exits, [1])
+  assert.match(f.logs.join(''), /migrate failed to start: EPERM/)
+  assert.doesNotMatch(f.logs.join(''), /SECRET/)
 })
 
 test('SIGTERM during opt-in migration stops it without starting the services', async () => {
