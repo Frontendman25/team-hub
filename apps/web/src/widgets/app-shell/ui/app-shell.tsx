@@ -45,8 +45,11 @@ export function AppShell({ children }: { children: ReactNode }) {
     <div className="min-h-screen bg-canvas">
       <CommandPalette />
       <header className="sticky top-0 z-20 border-b border-border bg-white/90 backdrop-blur">
-        <div className="mx-auto flex h-16 max-w-[1280px] items-center gap-4 px-4">
-          <Link href={homeHref} className="flex items-center gap-2 font-semibold">
+        <div className="mx-auto flex min-h-16 max-w-[1280px] flex-wrap items-center gap-2 px-4 py-2 sm:flex-nowrap sm:gap-4">
+          <Link
+            href={homeHref}
+            className="flex items-center gap-2 font-semibold"
+          >
             <span className="grid size-8 place-items-center rounded-lg bg-accent text-sm text-accent-foreground">
               TH
             </span>
@@ -68,7 +71,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               Ctrl K
             </kbd>
           </button>
-          <div className="ml-auto flex items-center gap-3">
+          <div className="ml-auto flex min-w-0 flex-wrap items-center justify-end gap-2 sm:gap-3">
             {me.data ? (
               <>
                 <WorkspaceSwitcher />
@@ -133,7 +136,11 @@ export function AppShell({ children }: { children: ReactNode }) {
               { href: homeHref, label: 'Home', icon: Home },
               ...(current
                 ? [
-                    { href: messagesHref, label: 'Messages', icon: MessageSquare },
+                    {
+                      href: messagesHref,
+                      label: 'Messages',
+                      icon: MessageSquare
+                    },
                     { href: boardHref, label: 'Board', icon: Kanban },
                     { href: filesHref, label: 'Files', icon: Folder },
                     { href: membersHref, label: 'Members', icon: Users }
@@ -147,8 +154,7 @@ export function AppShell({ children }: { children: ReactNode }) {
             ].map((item) => {
               const active =
                 item.label === 'Home'
-                  ? pathname === '/' ||
-                    pathname === `/w/${current?.slug ?? ''}`
+                  ? pathname === '/' || pathname === `/w/${current?.slug ?? ''}`
                   : pathname.startsWith(item.href)
               return (
                 <Link
@@ -166,7 +172,7 @@ export function AppShell({ children }: { children: ReactNode }) {
                 </Link>
               )
             })}
-            {me.data ? (
+            {me.data && current ? (
               <button
                 type="button"
                 className="mt-2 w-full rounded-xl bg-accent px-3 py-2 text-sm font-semibold"
@@ -177,7 +183,7 @@ export function AppShell({ children }: { children: ReactNode }) {
               >
                 New post
               </button>
-            ) : (
+            ) : !me.data ? (
               <>
                 <TryDemoButton className="mt-2" label="Try Demo" />
                 <Link
@@ -187,20 +193,29 @@ export function AppShell({ children }: { children: ReactNode }) {
                   Sign in
                 </Link>
               </>
-            )}
+            ) : null}
           </nav>
         </aside>
 
-        <div className="min-w-0 flex-1 pb-16 md:pb-0">{children}</div>
+        <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+          {children}
+        </main>
       </div>
 
-      <nav className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-white md:hidden">
-        <div className="grid grid-cols-5">
+      <nav
+        aria-label="Mobile navigation"
+        className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
+      >
+        <div className={cn('grid', current ? 'grid-cols-5' : 'grid-cols-3')}>
           {[
             { href: homeHref, label: 'Home', icon: Home },
-            { href: messagesHref, label: 'Chat', icon: MessageSquare },
-            { href: boardHref, label: 'Board', icon: Kanban },
-            { href: filesHref, label: 'Files', icon: Folder },
+            ...(current
+              ? [
+                  { href: messagesHref, label: 'Chat', icon: MessageSquare },
+                  { href: boardHref, label: 'Board', icon: Kanban },
+                  { href: filesHref, label: 'Files', icon: Folder }
+                ]
+              : [{ href: '/invitations', label: 'Invites', icon: Mail }]),
             { href: '/profile', label: 'Profile', icon: UserRound }
           ].map((item) => (
             <Link

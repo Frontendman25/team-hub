@@ -6,6 +6,7 @@ import { useSyncExternalStore } from 'react'
 import { workspaceQueries } from '@/entities/workspace/api/queries'
 import { userQueries } from '@/entities/user/api/queries'
 import type { Workspace } from '@/shared/types/api'
+import { selectWorkspace } from './select-workspace'
 
 function readCookie(name: string): string | null {
   if (typeof document === 'undefined') {
@@ -17,10 +18,14 @@ function readCookie(name: string): string | null {
   return match ? decodeURIComponent(match.split('=')[1] ?? '') : null
 }
 
-export function useCurrentWorkspace(): {
+export function useCurrentWorkspace(
+  initialPreferredSlug: string | null = null
+): {
   current: Workspace | null
   workspaces: Workspace[]
   isPending: boolean
+  isError: boolean
+  retry: () => void
 } {
   const pathname = usePathname()
   const me = useQuery(userQueries.me())
@@ -34,17 +39,17 @@ export function useCurrentWorkspace(): {
   const cookieSlug = useSyncExternalStore(
     () => () => undefined,
     () => readCookie('th.ws'),
-    () => null
+    () => initialPreferredSlug
   )
-  const slug = slugFromPath ?? cookieSlug
-  const current =
-    list.data?.find((workspace) => workspace.slug === slug) ??
-    list.data?.[0] ??
-    null
+  const current = selectWorkspace(list.data ?? [], slugFromPath, cookieSlug)
 
   return {
     current,
     workspaces: list.data ?? [],
-    isPending: Boolean(me.data) && list.isPending
+    isPending: me.isPending || (Boolean(me.data) && list.isPending),
+    isError: me.isError || (Boolean(me.data) && list.isError),
+    retry: () => {
+      void (me.isError ? me.refetch() : list.refetch())
+    }
   }
 }

@@ -11,10 +11,12 @@ import { Button } from '@/shared/ui/button'
 
 export function TryDemoButton({
   className,
-  label = 'Try Demo'
+  label = 'Try Demo',
+  variant = 'primary'
 }: {
   className?: string
   label?: string
+  variant?: 'primary' | 'outline' | 'ghost'
 }) {
   const router = useRouter()
   const queryClient = useQueryClient()
@@ -37,6 +39,7 @@ export function TryDemoButton({
   return (
     <div className={className}>
       <Button
+        variant={variant}
         type="button"
         className={cn('w-full', className)}
         disabled={mutation.isPending}
