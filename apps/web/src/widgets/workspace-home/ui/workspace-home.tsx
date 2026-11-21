@@ -48,7 +48,9 @@ export function WorkspaceHome({
       <section className="rounded-2xl border border-border bg-white p-5 sm:p-6">
         <h1 className="text-xl font-semibold">Create your first workspace</h1>
         <p className="mt-1 mb-4 text-sm text-muted-foreground">
-          Private to the people you invite. Isolated from the public demo.
+          A workspace brings your team’s posts, messages, tasks, and files
+          together. Create one below, or join through an invitation. The
+          remaining menu sections will become available.
         </p>
         {me.data?.accountKind === 'guest' ? (
           <p className="text-sm text-muted-foreground">

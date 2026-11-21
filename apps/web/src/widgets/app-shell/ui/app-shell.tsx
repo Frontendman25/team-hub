@@ -26,12 +26,13 @@ import { WorkspaceSwitcher } from '@/widgets/workspace-switcher/ui/workspace-swi
 import { Avatar } from '@/shared/ui/avatar'
 import { Button } from '@/shared/ui/button'
 import { useUiStore } from '@/shared/model/ui-store'
+import { WorkspaceNavItem } from './workspace-nav-item'
 
 export function AppShell({ children }: { children: ReactNode }) {
   const pathname = usePathname()
   const router = useRouter()
   const me = useQuery(userQueries.me())
-  const { current } = useCurrentWorkspace()
+  const { current, workspaces, isPending, isError } = useCurrentWorkspace()
   const setComposerOpen = useUiStore((state) => state.setComposerOpen)
   const setSearchOpen = useUiStore((state) => state.setSearchOpen)
   const homeHref = current ? `/w/${current.slug}` : '/'
@@ -40,6 +41,63 @@ export function AppShell({ children }: { children: ReactNode }) {
   const filesHref = current ? `/w/${current.slug}/files` : '/login'
   const membersHref = current ? `/w/${current.slug}/members` : '/login'
   const boardHref = current ? `/w/${current.slug}/board` : '/login'
+
+  const showWorkspaceSections = Boolean(
+    current || (me.data && !isPending && !isError && workspaces.length === 0)
+  )
+  const navigation = [
+    { href: homeHref, label: 'Home', icon: Home, needsWorkspace: false },
+    ...(showWorkspaceSections
+      ? [
+          {
+            href: messagesHref,
+            label: 'Messages',
+            icon: MessageSquare,
+            needsWorkspace: true
+          },
+          {
+            href: boardHref,
+            label: 'Board',
+            icon: Kanban,
+            needsWorkspace: true
+          },
+          {
+            href: filesHref,
+            label: 'Files',
+            icon: Folder,
+            needsWorkspace: true
+          },
+          {
+            href: membersHref,
+            label: 'Members',
+            icon: Users,
+            needsWorkspace: true
+          }
+        ]
+      : []),
+    {
+      href: '/profile',
+      label: 'My Profile',
+      icon: UserRound,
+      needsWorkspace: false
+    },
+    {
+      href: '/invitations',
+      label: 'Invites',
+      icon: Mail,
+      needsWorkspace: false
+    },
+    ...(showWorkspaceSections
+      ? [
+          {
+            href: settingsHref,
+            label: 'Settings',
+            icon: Settings,
+            needsWorkspace: true
+          }
+        ]
+      : [])
+  ]
 
   return (
     <div className="min-h-screen bg-canvas">
@@ -132,46 +190,22 @@ export function AppShell({ children }: { children: ReactNode }) {
       <div className="mx-auto flex max-w-[1280px] gap-6 px-4 py-6">
         <aside className="hidden w-56 shrink-0 md:block">
           <nav className="sticky top-24 space-y-1 rounded-2xl border border-border bg-white p-2 shadow-sm">
-            {[
-              { href: homeHref, label: 'Home', icon: Home },
-              ...(current
-                ? [
-                    {
-                      href: messagesHref,
-                      label: 'Messages',
-                      icon: MessageSquare
-                    },
-                    { href: boardHref, label: 'Board', icon: Kanban },
-                    { href: filesHref, label: 'Files', icon: Folder },
-                    { href: membersHref, label: 'Members', icon: Users }
-                  ]
-                : []),
-              { href: '/profile', label: 'My Profile', icon: UserRound },
-              { href: '/invitations', label: 'Invites', icon: Mail },
-              ...(current
-                ? [{ href: settingsHref, label: 'Settings', icon: Settings }]
-                : [])
-            ].map((item) => {
-              const active =
-                item.label === 'Home'
-                  ? pathname === '/' || pathname === `/w/${current?.slug ?? ''}`
-                  : pathname.startsWith(item.href)
-              return (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl px-3 py-2 text-sm font-medium',
-                    active
-                      ? 'bg-accent/70 text-foreground'
-                      : 'text-muted-foreground hover:bg-muted'
-                  )}
-                >
-                  <item.icon className="size-4" />
-                  {item.label}
-                </Link>
-              )
-            })}
+            {navigation.map((item) => (
+              <WorkspaceNavItem
+                key={item.label}
+                label={item.label}
+                href={item.href}
+                locked={item.needsWorkspace && !current}
+                active={
+                  item.label === 'Home'
+                    ? pathname === '/' || pathname === homeHref
+                    : pathname.startsWith(item.href)
+                }
+              >
+                <item.icon className="size-4" />
+                {item.label}
+              </WorkspaceNavItem>
+            ))}
             {me.data && current ? (
               <button
                 type="button"
@@ -197,7 +231,14 @@ export function AppShell({ children }: { children: ReactNode }) {
           </nav>
         </aside>
 
-        <main className="min-w-0 flex-1 pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0">
+        <main
+          className={cn(
+            'min-w-0 flex-1 md:pb-0',
+            showWorkspaceSections
+              ? 'pb-[calc(8rem+env(safe-area-inset-bottom))]'
+              : 'pb-[calc(4rem+env(safe-area-inset-bottom))]'
+          )}
+        >
           {children}
         </main>
       </div>
@@ -206,26 +247,28 @@ export function AppShell({ children }: { children: ReactNode }) {
         aria-label="Mobile navigation"
         className="fixed inset-x-0 bottom-0 z-20 border-t border-border bg-white pb-[env(safe-area-inset-bottom)] md:hidden"
       >
-        <div className={cn('grid', current ? 'grid-cols-5' : 'grid-cols-3')}>
-          {[
-            { href: homeHref, label: 'Home', icon: Home },
-            ...(current
-              ? [
-                  { href: messagesHref, label: 'Chat', icon: MessageSquare },
-                  { href: boardHref, label: 'Board', icon: Kanban },
-                  { href: filesHref, label: 'Files', icon: Folder }
-                ]
-              : [{ href: '/invitations', label: 'Invites', icon: Mail }]),
-            { href: '/profile', label: 'Profile', icon: UserRound }
-          ].map((item) => (
-            <Link
+        <div
+          className={cn(
+            'grid',
+            showWorkspaceSections ? 'grid-cols-4' : 'grid-cols-3'
+          )}
+        >
+          {navigation.map((item) => (
+            <WorkspaceNavItem
               key={item.label}
+              label={item.label}
               href={item.href}
-              className="flex flex-col items-center py-2 text-xs"
+              mobile
+              locked={item.needsWorkspace && !current}
+              active={
+                item.label === 'Home'
+                  ? pathname === '/' || pathname === homeHref
+                  : pathname.startsWith(item.href)
+              }
             >
               <item.icon className="size-5" />
               {item.label}
-            </Link>
+            </WorkspaceNavItem>
           ))}
         </div>
       </nav>

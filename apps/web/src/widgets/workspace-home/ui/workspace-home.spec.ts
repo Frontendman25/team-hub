@@ -124,6 +124,7 @@ describe('workspace home states', () => {
   it('shows left-aligned creation only after a successful empty response', () => {
     const html = renderToStaticMarkup(createElement(WorkspaceHome))
     expect(html).toContain('Create your first workspace')
+    expect(html).toContain('The remaining menu sections will become available.')
     expect(html).toContain('Create workspace')
     expect(html).toContain('data-variant="outline"')
     expect(html).not.toContain('mx-auto')
@@ -156,27 +157,37 @@ describe('workspace selection and navigation', () => {
     expect(selectWorkspace([first, second], null, 'removed')).toBe(first)
     expect(selectWorkspace([], null, 'teamhub')).toBeNull()
   })
-  it('hides workspace actions, including New post, without an active workspace', () => {
+  it('shows every section without workspace links or New post after a confirmed empty response', () => {
     const html = renderToStaticMarkup(createElement(AppShell, null, 'Content'))
     expect(html).toContain('Sign out')
     expect(html).toContain('My Profile')
-    for (const label of [
-      'New post',
-      'Messages',
-      'Board',
-      'Files',
-      'Members',
-      'Settings'
-    ])
-      expect(html).not.toContain(`>${label}<`)
-    expect(html).toContain('grid-cols-3')
+    expect(html).not.toContain('New post')
+    for (const label of ['Messages', 'Board', 'Files', 'Members', 'Settings']) {
+      expect(html).toContain(`Create or join a workspace to use ${label}.`)
+    }
+    expect(html.match(/aria-disabled="true"/g) ?? []).toHaveLength(10)
+    expect(html).not.toContain('href="/login"')
+    expect(html).toContain('grid-cols-4')
     expect(html).toContain('safe-area-inset-bottom')
   })
+  it.each(['pending', 'error'] as const)(
+    'does not claim workspace absence while %s',
+    (status) => {
+      state[status] = true
+      const html = renderToStaticMarkup(
+        createElement(AppShell, null, 'Content')
+      )
+      expect(html).not.toContain('Create or join a workspace')
+      expect(html).not.toContain('New post')
+    }
+  )
   it('shows normal navigation for a workspace member', () => {
     state.workspaces = [workspace('team')]
     const html = renderToStaticMarkup(createElement(AppShell, null, 'Content'))
     for (const path of ['messages', 'board', 'files', 'members', 'settings'])
       expect(html).toContain(`href="/w/team/${path}"`)
     expect(html).toContain('New post')
+    expect(html).not.toContain('aria-disabled="true"')
+    expect(html).not.toContain('Create or join a workspace')
   })
 })
